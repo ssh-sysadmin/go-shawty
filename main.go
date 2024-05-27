@@ -15,12 +15,12 @@ var redirects = map[string]string{
 	"ssh": "https://ssh.contact/",
 }
 
-func getDestination(path string) (string, bool) {
-	v, exists := redirects[path]
+func getDestination(slug string) (string, bool) {
+	v, exists := redirects[slug]
 	return v, exists
 }
-func addDestination(path string, destination string) error {
-	redirects[path] = destination
+func addDestination(slug string, destination string) error {
+	redirects[slug] = destination
 	return error(nil) //could be error value when networked DB
 }
 
@@ -31,11 +31,14 @@ func handleAddRedirect(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(r.URL.Path) < 1 {
+		http.Error(w, "No slug provided", http.StatusBadRequest)
+		return
+		//TODO: Add random slug generation
+	} //put slug assignment in an else block once rand gen is done
+	slug := r.URL.Path[1:]
 
-	}
-	path := r.URL.Path[1:]
 	dest := string(body)
-	err = addDestination(path, dest)
+	err = addDestination(slug, dest)
 	if err != nil {
 		http.Error(w, "Unknown server error in addition of redirect mapping to store", http.StatusInternalServerError)
 		return
@@ -44,17 +47,18 @@ func handleAddRedirect(w http.ResponseWriter, r *http.Request) {
 }
 
 func handleRedirect(w http.ResponseWriter, r *http.Request) {
-	dest, exists := getDestination(r.URL.Path[1:])
-
+	//if blank slug/path
 	if len(r.URL.Path) < 1 {
 		http.NotFound(w, r)
 		return
 	}
+	dest, exists := getDestination(r.URL.Path[1:])
+
 	if !exists {
 		http.NotFound(w, r)
 		return
 	}
-
+	//TODO: maybe i want to add expirys? maybe after networked DB?
 	http.Redirect(w, r, dest, http.StatusTemporaryRedirect)
 
 }
