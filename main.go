@@ -4,14 +4,25 @@
 package main
 
 import (
+	"context"
+	"crypto/rand"
 	"encoding/base32"
 	"fmt"
+	"github.com/redis/go-redis/v9"
 	"io"
 	"log"
-	"math/rand"
 	"net"
 	"net/http"
 )
+
+// do some context thing. not really relevant
+var ctx = context.Background()
+
+// define the redis connection settings
+var rdb = redis.NewClient(&redis.Options{
+	Addr:     "206.82.251.44:6379",
+	Password: "o6RN4AvGBp7KcjsycbDvnLy2x",
+})
 
 var redirects = map[string]string{
 	"ssh": "https://ssh.contact/",
@@ -23,18 +34,18 @@ var crock32 = base32.NewEncoding("0123456789abcdefghjkmnpqrstvwxyz").
 func generateRandomSlug(length int) (string, error) {
 	b := make([]byte, length)
 	if _, err := rand.Read(b); err != nil {
-		return "", fmt.Errorf("argon2: failed to generate random bytes: %w", err)
+		return "", fmt.Errorf("failed to generate random bytes: %w", err)
 	}
 	return crock32.EncodeToString(b), nil
 }
 
-func getDestination(slug string) (string, bool) {
-	v, exists := redirects[slug]
-	return v, exists
+func getDestination(slug string) (string, error) {
+	dest, err := rdb.Get(ctx, slug).Result()
+	return dest, err
 }
-func addDestination(slug string, destination string) error {
-	redirects[slug] = destination
-	return error(nil) //could be error value when networked DB
+func addDestination(slug string, dest string) error {
+	err := rdb.Set(ctx, slug, dest, 0).Err()
+	return err
 }
 
 func handleAddRedirect(w http.ResponseWriter, r *http.Request) {
@@ -69,10 +80,12 @@ func handleRedirect(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
-	dest, exists := getDestination(r.URL.Path[1:])
+	dest, err := getDestination(r.URL.Path[1:])
 
-	if !exists {
-		http.NotFound(w, r)
+	//TODO: make this fail properly and provide some data to client
+	if err != nil {
+		http.Error(w, "Error when fetching destination for the redirect", http.StatusInternalServerError)
+
 		return
 	}
 	//TODO: maybe i want to add expirys? maybe after networked DB?
@@ -92,6 +105,22 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+
+	//check that it works
+	if err := rdb.Ping(ctx).Err(); err != nil {
+		log.Fatal(err)
+	} else {
+		fmt.Println("Connected to redis server.")
+	}
+
+	//dump all predefined values into redis
+	for slug, dest := range redirects {
+		err := rdb.Set(ctx, slug, dest, 0).Err()
+		if err != nil {
+			fmt.Errorf("Error in dumping predefined redirect to redis. Slug: %s, Destination: %s.", slug, dest)
+		}
+	}
+
 	http.HandleFunc("/*", handleRedirect)
 	http.HandleFunc("POST /*", handleAddRedirect)
 	http.HandleFunc("/status", handleStatus)
