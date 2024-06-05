@@ -1,6 +1,6 @@
 // With brainless help from Matthew f*cking Penner
 // load testers: https://github.com/denji/awesome-http-benchmark
-// redis pass: o6RN4AvGBp7KcjsycbDvnLy2x
+// redis pass: whups-missed-this
 package main
 
 import (
