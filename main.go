@@ -8,11 +8,13 @@ import (
 	"crypto/rand"
 	"encoding/base32"
 	"fmt"
+	"github.com/joho/godotenv"
 	"github.com/redis/go-redis/v9"
 	"io"
 	"log"
 	"net"
 	"net/http"
+	"os"
 )
 
 // do some context thing. not really relevant
@@ -20,8 +22,8 @@ var ctx = context.Background()
 
 // define the redis connection settings
 var rdb = redis.NewClient(&redis.Options{
-	Addr:     "not-today-fucker",
-	Password: "yes-ive-already-reset-this",
+	Addr:     "filler",
+	Password: "filler",
 })
 
 var redirects = map[string]string{
@@ -106,6 +108,19 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 
+	//load envvars from .env file
+	err := godotenv.Load()
+
+	if err != nil {
+		log.Fatal("Error loading .env file:", err)
+	}
+
+	//add the redis details to the rdb definition
+	rdb = redis.NewClient(&redis.Options{
+		Addr:     fmt.Sprintf("%s:%s", os.Getenv("REDIS_ADDR"), os.Getenv("REDIS_PORT")),
+		Password: os.Getenv("REDIS_PASS"),
+	})
+
 	//check that it works
 	if err := rdb.Ping(ctx).Err(); err != nil {
 		log.Fatal(err)
@@ -127,7 +142,7 @@ func main() {
 
 	fmt.Println("Server is listening on port 42069")
 
-	err := http.ListenAndServe(":42069", nil)
+	err = http.ListenAndServe(":42069", nil)
 	if err != nil {
 		log.Printf(err.Error())
 		return
