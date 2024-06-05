@@ -20,8 +20,8 @@ var ctx = context.Background()
 
 // define the redis connection settings
 var rdb = redis.NewClient(&redis.Options{
-	Addr:     "206.82.251.44:6379",
-	Password: "o6RN4AvGBp7KcjsycbDvnLy2x",
+	Addr:     "not-today-fucker",
+	Password: "yes-ive-already-reset-this",
 })
 
 var redirects = map[string]string{
