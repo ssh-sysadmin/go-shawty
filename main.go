@@ -139,10 +139,10 @@ func main() {
 	http.HandleFunc("/*", handleRedirect)
 	http.HandleFunc("POST /*", handleAddRedirect)
 	http.HandleFunc("/status", handleStatus)
+	listenAddr := os.Getenv("LISTEN_ADDR")
+	fmt.Println("Server is listening on %s", listenAddr)
 
-	fmt.Println("Server is listening on port 42069")
-
-	err = http.ListenAndServe(":42069", nil)
+	err = http.ListenAndServe(listenAddr, nil)
 	if err != nil {
 		log.Printf(err.Error())
 		return
